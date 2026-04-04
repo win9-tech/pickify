@@ -61,6 +61,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
+
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(customAuthenticationEntryPoint)
                         .accessDeniedHandler(customAccessDeniedHandler)
@@ -68,7 +69,6 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(endpoint -> endpoint
                                 .authorizationRequestResolver(customAuthorizationRequestResolver))
-                        .redirectionEndpoint(url -> url.baseUri("/oauth2/callback"))
                         .userInfoEndpoint(endpoint -> endpoint.userService(oAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler));
