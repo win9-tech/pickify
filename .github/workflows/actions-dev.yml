@@ -40,8 +40,8 @@ jobs:
             --from-literal=DB_HOST_PASSWORD="${{ secrets.DB_HOST_PASSWORD }}" \
             --from-literal=REDIS_HOST="${{ secrets.REDIS_HOST }}" \
             --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
-            --from-literal=CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
-            --from-literal=CLIENT_SECRET="${{ secrets.KAKAO_CLIENT_SECRET }}" \
+            --from-literal=KAKAO_CLIENT_ID="${{ secrets.KAKAO_CLIENT_ID }}" \
+            --from-literal=KAKAO_CLIENT_SECRET="${{ secrets.KAKAO_CLIENT_SECRET }}" \
             --from-literal=REDIRECT_URI="${{ secrets.REDIRECT_URI }}" \
             --from-literal=SCOPE="profile_nickname,account_email" \
             --from-literal=S3_ACCESS_KEY="${{ secrets.S3_ACCESS_KEY }}" \
