@@ -7,6 +7,8 @@ on:
 jobs:
   build-and-deploy:
     runs-on: self-hosted
+    env:
+      KUBECONFIG: /home/ubuntu/.kube/config
     steps:
       - uses: actions/checkout@v4
 
