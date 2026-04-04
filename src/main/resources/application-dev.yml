@@ -29,9 +29,9 @@ spring:
       client:
         registration:
           kakao:
-            client-name: ${CLIENT_NAME}
-            client-id: ${CLIENT_ID}
-            client-secret: ${CLIENT_SECRET}
+            client-name: ${KAKAO_CLIENT_NAME}
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: ${CLIENT_AUTHN_METHOD}
             authorization-grant-type: ${GRANT_TYPE}
             redirect-uri: ${REDIRECT_URI}

@@ -36,3 +36,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Kubernetes Secrets ###
+k3s/pickify-secrets.yaml
+k3s/minio-secrets.yaml
