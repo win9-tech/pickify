@@ -1,77 +1,82 @@
-# 📍 Team-Pickify 개발 컨벤션
+# Pickify
 
-## ⭐️ git issue Convention
-- **이슈 생성 시 진행하고자 하는 task에 맞춰서 Get started**
-- **이슈 title: [타입] + 실제 수행할 task 목록**
-  <pre><code> ex) [Feat] API 응답 base code 구현
-  </code></pre>
-- **이슈 description: 진행한 task 자유롭게 요약**
-- Development의 Create a branch로 브랜치 생성 <br>
-  - **[타입]/#이슈번호**
-  <pre><code> ex) feature/#5
-  </code></pre>
+> 인스타그램 매거진에서 추천하는 트렌디한 장소들을 지도 위에 시각화하여 Z세대 사용자들이 자신의 취향에 맞는 플레이스를 쉽게 탐색하고 저장할 수 있도록 돕는 위치 기반 큐레이션 서비스입니다.
 
----
+- **개발 기간**: 2025.01.05 ~ 2025.02.23
+- **팀 구성**: 기획/디자인 1명, FE 3명, BE 4명
+- **배포 URL**: https://pickify.froz.cloud
 
-## ⭐️ PR Convention
+## 기술 스택
 
-🟢 각 브랜치에서 main으로 PR 올리기 <br>
-🟢 PR 생성 후 팀원 2명 이상에게 코드 리뷰 받아야 merge 가능 <br>
-🟢 PR 내용은 아래의 템플릿을 사용한다
+| 분류 | 기술 |
+|------|------|
+| Backend | Java 21, Spring Boot 3.3.5, Spring Security, Spring Data JPA |
+| Database | MySQL 8.0, Redis |
+| Auth | JWT (JJWT), OAuth 2.0 (Kakao) |
+| Infra | AWS EC2, Docker, GitHub Actions CI/CD |
 
-### #️⃣ 연관된 이슈
+## 담당 역할
 
-> ex) #이슈번호, #이슈번호
+**백엔드 팀장** (BE 4명 중 1명)
 
-### 📝 작업 내용
+### 1. JWT 기반 인증/인가 시스템 구현
 
-> 이번 PR에서 작업한 내용을 간략히 설명해주세요(이미지 첨부 가능)
+Spring Security와 JJWT를 활용한 stateless 인증 시스템 설계 및 구현
 
-### 📸 스크린샷 (선택)
+- **토큰 구조**: Access Token (5시간) / Refresh Token (7일) / Email Token (5분)
+- **보안 설정**: HttpOnly, Secure, SameSite=None 쿠키 정책 적용
+- **토큰 저장**: Refresh Token은 Redis에 저장하여 탈취 시 무효화 가능하도록 설계
+- **커스텀 필터**: `JwtAuthFilter`, `CustomLoginFilter` 구현으로 인증 흐름 제어
 
->
+### 2. 카카오 OAuth 2.0 소셜 로그인 구현
 
-### 💬 리뷰 요구사항(선택)
+Spring Security OAuth2 Client를 활용한 카카오 소셜 로그인
 
-> 리뷰어가 특별히 봐주었으면 하는 부분이 있다면 작성해주세요
->
-> ex) 메서드 XXX의 이름을 더 잘 짓고 싶은데 혹시 좋은 명칭이 있을까요?
+- `CustomOAuth2UserService`: 카카오 사용자 정보 처리 및 자동 회원가입
+- `OAuth2SuccessHandler`: 로그인 성공 시 JWT 발급 및 쿠키 설정
+- `CustomAuthorizationRequestResolver`: OAuth2 인증 요청 커스터마이징
 
----
+### 3. 이메일 인증 시스템 구현
 
-## ⭐️ Code Convention
+회원가입 전 이메일 소유권 검증을 위한 인증 코드 시스템
 
-✅ 들여쓰기는 4칸 <br>
-✅ indent depth(들여쓰기)는 최대한 2까지 맞추도록(반복문 남용 금지) <br>
-✅ 클래스명은 PascalCase, 메서드와 변수는 camelCase<br>
-✅ 주석 작성 시 "클래스와 메서드"에는 Javadoc 스타일 사용<br>
-<pre><code>💡Example
-/**
-   * 사용자 정보를 ID로 조회합니다.
-   *
-   * @param userId 조회할 사용자의 ID
-   * @return 사용자 정보
-   */
-</code></pre>
-✅ 코드 내 주석은 필요 시 추가, 불필요한 주석은 제거 <br>
+- **비동기 처리**: `@Async`와 `ThreadPoolTaskExecutor`로 이메일 발송 병렬 처리
+- **템플릿 엔진**: Thymeleaf를 활용한 HTML 이메일 템플릿 렌더링
+- **인증 코드 관리**: Redis에 6자리 코드 저장 (TTL 5분), 검증 후 Email JWT 발급
 
----
+### 4. Redis 캐싱 시스템 구현
 
-## ⭐️ Spring Boot 특화 코드 스타일
+자주 조회되는 데이터의 응답 속도 개선을 위한 캐싱 적용
 
-### 1. 애노테이션 사용
-   - 클래스 레벨의 애노테이션 순서는 다음과 같이 작성한다
-     ```
-      1) @Controller, @Service, @Repository 등 주요 역할 지정
-      2) @RequestMapping, @GetMapping, @PostMapping 등 HTTP 관련 애노테이션
-      3) 기타(예: @Transactional, @Cacheable)
-      ```
-### 2. Bean 주입 방식
-   - Spring에서는 생성자 주입을 기본으로 사용하며, @Autowired 필드 주입은 지양
+- **캐싱 대상**: 카테고리, 매거진, 플레이스, 사용자 저장 플레이스 목록
+- **캐시 전략**: `@Cacheable` 어노테이션 기반, TTL 5초 설정
+- **직렬화**: `GenericJackson2JsonRedisSerializer`로 JSON 직렬화
 
-### 3. 컨트롤러 메서드
-   - HTTP 응답 코드는 명확히 설정하고, 반환 타입으로는 DTO 사용
+### 5. 구현 API 목록 (7개)
 
-### 4. DTO와 Entity 분리
-   - DTO는 외부에 노출되는 데이터를 정의하며, Entity는 내부 데이터베이스와 매핑
-   - Entity를 직접 컨트롤러에서 반환하지 말고, 서비스 계층에서 변환
+| API | 설명 |
+|-----|------|
+| `POST /auth/login` | 이메일/비밀번호 기반 로그인 |
+| `GET /auth/oauth2/kakao` | 카카오 소셜 로그인 |
+| `POST /users/signup` | 회원가입 (Email JWT 필요) |
+| `POST /email-auth/send` | 이메일 인증코드 발송 |
+| `POST /email-auth/verify` | 인증코드 검증 및 Email JWT 발급 |
+| `POST /auth/logout` | 로그아웃 (Refresh Token 삭제) |
+| `POST /auth/reissue` | Access Token 재발급 |
+
+## 프로젝트 구조
+
+```
+src/main/java/com/pickyfy/pickyfy/
+├── auth/
+│   ├── filter/          # JwtAuthFilter, CustomLoginFilter
+│   ├── handler/         # OAuth2 Success/Failure Handler
+│   └── oauth2/          # CustomOAuth2UserService
+├── common/
+│   ├── config/          # Security, Redis, Mail Config
+│   └── util/            # JwtUtil, RedisUtil
+├── service/
+│   └── EmailServiceImpl # 이메일 인증 서비스
+└── web/
+    └── controller/      # AsyncEmailService
+```
