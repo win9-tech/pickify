@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pickify
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pickify-config
+  namespace: pickify
+data:
+  SPRING_PROFILES_ACTIVE: "dev,bucket"
+  REDIS_PORT: "6379"
+  CLIENT_NAME: "kakao"
+  CLIENT_AUTHN_METHOD: "client_secret_post"
+  GRANT_TYPE: "authorization_code"
+  AUTHZ_URI: "https://kauth.kakao.com/oauth/authorize"
+  TOKEN_URI: "https://kauth.kakao.com/oauth/token"
+  USER_INFO_URI: "https://kapi.kakao.com/v2/user/me"
+  USER_NAME_ATTRIBUTE: "id"
+  S3_ENDPOINT: "http://minio.database.svc.cluster.local:9000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pickify-app
+  namespace: pickify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pickify
+  template:
+    metadata:
+      labels:
+        app: pickify
+    spec:
+      containers:
+      - name: pickify
+        image: ${DOCKERHUB_USERNAME}/pickify:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: pickify-config
+        - secretRef:
+            name: pickify-secrets
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pickify-service
+  namespace: pickify
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: pickify
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pickify-ingress
+  namespace: pickify
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - host: ${APP_DOMAIN}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pickify-service
+            port:
+              number: 80
