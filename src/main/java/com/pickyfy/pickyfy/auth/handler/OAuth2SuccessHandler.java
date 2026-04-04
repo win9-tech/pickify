@@ -22,7 +22,7 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String REDIRECT_URL = "https://team-pickify.store/";
+    private static final String REDIRECT_URL = "https://pickify.froz.cloud/";
 
     private final JwtUtil jwtUtil;
     private final RedisUtil redisUtil;
