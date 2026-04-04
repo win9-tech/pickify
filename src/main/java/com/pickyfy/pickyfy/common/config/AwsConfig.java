@@ -2,6 +2,7 @@ package com.pickyfy.pickyfy.common.config;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,25 +12,33 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AwsConfig {
 
-    // S3를 등록한 사람이 전달받은 접속하기 위한 key 값
     @Value("${cloud.aws.credentials.access-key}")
     private String accessKey;
 
-    // S3를 등록한 사람이 전달받은 접속하기 위한 secret key 값
     @Value("${cloud.aws.credentials.secret-key}")
     private String secretKey;
 
-    // S3를 등록한 사람이 S3를 사용할 지역
     @Value("${cloud.aws.region.static}")
     private String region;
 
-    // 전달받은 Accesskey 와 SecretKey 로 아마존 서비스 실행 준비
+    @Value("${cloud.aws.s3.endpoint:}")
+    private String endpoint;
+
     @Bean
     public AmazonS3Client amazonS3Client() {
         BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKey, secretKey);
-        return (AmazonS3Client) AmazonS3ClientBuilder.standard()
-                .withRegion(region)
+        AmazonS3ClientBuilder builder = AmazonS3ClientBuilder.standard()
                 .withCredentials(new AWSStaticCredentialsProvider(awsCreds))
-                .build();
+                .withPathStyleAccessEnabled(true);
+
+        if (endpoint != null && !endpoint.isEmpty()) {
+            builder.withEndpointConfiguration(
+                new AwsClientBuilder.EndpointConfiguration(endpoint, region)
+            );
+        } else {
+            builder.withRegion(region);
+        }
+
+        return (AmazonS3Client) builder.build();
     }
 }

@@ -6,6 +6,7 @@ cloud:
       bucket: pickify
       path:
         image: images/
+      endpoint: ${S3_ENDPOINT:}
     stack:
       auto: false
     credentials:
