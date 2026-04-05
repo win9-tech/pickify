@@ -26,14 +26,12 @@ jobs:
         run: |
           export DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
           export APP_DOMAIN=${{ secrets.APP_DOMAIN }}
+          export S3_PUBLIC_URL=${{ secrets.S3_PUBLIC_URL }}
           envsubst < k3s/pickify-app.yaml > k3s/pickify-app-substituted.yaml
 
       - name: Deploy to k3s
         run: |
-          # Apply namespace, configmap, deployment, service, ingress
-          kubectl apply -f k3s/pickify-app-substituted.yaml
-
-          # Create or update pickify-secrets
+          # Create or update pickify-secrets first
           kubectl create secret generic pickify-secrets \
             --from-literal=DB_URL="${{ secrets.DB_URL }}" \
             --from-literal=DB_HOST_NAME="${{ secrets.DB_HOST_NAME }}" \
@@ -53,10 +51,11 @@ jobs:
             -n pickify \
             --dry-run=client -o yaml | kubectl apply -f -
 
-          # Update deployment image
-          kubectl set image deployment/pickify-app \
-            pickify=${{ secrets.DOCKERHUB_USERNAME }}/pickify:${{ github.sha }} \
-            -n pickify
+          # Apply namespace, configmap, deployment, service, ingress
+          kubectl apply -f k3s/pickify-app-substituted.yaml
+
+          # Force pod restart to pick up new secrets/configmap
+          kubectl rollout restart deployment/pickify-app -n pickify
 
           # Cleanup
           rm -f k3s/pickify-app-substituted.yaml
