@@ -197,9 +197,14 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     private PlaceSearchResponseParams createPlaceSearchResponseParams(Place place, Category category, Magazine magazine){
+        List<String> imageKeys = placeImageRepository.findAllByPlaceId(place.getId());
+        List<String> presignedUrls = imageKeys.stream()
+                .map(s3Service::generatePresignedUrl)
+                .toList();
+
         return new PlaceSearchResponseParams(
                 place,
-                placeImageRepository.findAllByPlaceId(place.getId()),
+                presignedUrls,
                 category.getName(),
                 new MagazineInfo(magazine.getTitle(), magazine.getIconUrl())
         );

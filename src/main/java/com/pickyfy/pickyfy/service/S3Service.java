@@ -1,7 +1,8 @@
 package com.pickyfy.pickyfy.service;
 
+import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URL;
+import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
 import java.io.IOException;
@@ -22,64 +25,90 @@ public class S3Service {
 
     private final AmazonS3Client amazonS3Client;
 
+    private static final long PRESIGNED_URL_EXPIRATION_MS = 1000 * 60 * 60; // 1시간
+
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
     @Value("${cloud.aws.s3.path.image}")
     private String imageFolder;
 
-    // TODO: @Async 비동기 처리
-    // TODO: 비동기 처리에 따른 반환값을 CompletableFuture<String>로 수정
-    public String upload(MultipartFile multipartFile) {
-        String fileName = imageFolder + generateUniqueFileName(Objects.requireNonNull(multipartFile.getOriginalFilename()));
+    @Value("${cloud.aws.s3.endpoint:}")
+    private String endpoint;
 
-        if (!(fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(
-                ".gif") || fileName.endsWith(".bmp"))) {
+    @Value("${cloud.aws.s3.public-url:}")
+    private String publicUrl;
+
+    /**
+     * 파일 업로드 후 S3 키(경로) 반환
+     */
+    public String upload(MultipartFile multipartFile) {
+        String key = imageFolder + generateUniqueFileName(Objects.requireNonNull(multipartFile.getOriginalFilename()));
+
+        if (!(key.endsWith(".png") || key.endsWith(".jpg") || key.endsWith(".jpeg") || key.endsWith(
+                ".gif") || key.endsWith(".bmp"))) {
             throw new RuntimeException();
         }
 
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(multipartFile.getContentType());
         metadata.setContentLength(multipartFile.getSize());
-        return putS3(multipartFile, fileName, metadata);     // 업로드된 파일의 S3 URL 주소 반환
+        return putS3(multipartFile, key, metadata);
     }
 
-    // TODO: @Async 비동기 처리
-    // TODO: 비동기 처리에 따른 반환값을 CompletableFuture<String>로 수정
-    private String putS3(MultipartFile multipartFile, String fileName, ObjectMetadata metadata) {
+    private String putS3(MultipartFile multipartFile, String key, ObjectMetadata metadata) {
         try (InputStream inputStream = multipartFile.getInputStream()) {
             amazonS3Client.putObject(
-                    new PutObjectRequest(bucket, fileName, inputStream, metadata)
-                            .withCannedAcl(CannedAccessControlList.PublicRead)
+                    new PutObjectRequest(bucket, key, inputStream, metadata)
             );
         } catch (IOException e) {
             throw new RuntimeException("파일 업로드 중 오류 발생", e);
         }
-        return amazonS3Client.getUrl(bucket, fileName).toString();
+        return key;  // 키만 반환
     }
 
-    private String getImageFileUrl(String fileName) {
-        String filePath = imageFolder + fileName;
-        return amazonS3Client.getUrl(bucket, filePath).toString();
+    /**
+     * S3 키로 presigned URL 생성 (1시간 유효)
+     * 이미 URL 형태(http/https)인 경우 그대로 반환 (OAuth 프로필 이미지 등)
+     */
+    public String generatePresignedUrl(String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+
+        // 이미 URL 형태면 그대로 반환 (카카오 등 외부 프로필 이미지)
+        if (key.startsWith("http://") || key.startsWith("https://")) {
+            return key;
+        }
+
+        Date expiration = new Date(System.currentTimeMillis() + PRESIGNED_URL_EXPIRATION_MS);
+
+        GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(bucket, key)
+                .withMethod(HttpMethod.GET)
+                .withExpiration(expiration);
+
+        URL url = amazonS3Client.generatePresignedUrl(request);
+        String presignedUrl = url.toString();
+
+        // 내부 엔드포인트를 외부 URL로 치환
+        if (publicUrl != null && !publicUrl.isEmpty() && endpoint != null && !endpoint.isEmpty()) {
+            presignedUrl = presignedUrl.replace(endpoint, publicUrl);
+        }
+
+        return presignedUrl;
     }
 
-    //파일 이름 중복 방지 코드
     private String generateUniqueFileName(String originalFilename) {
         String extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        return UUID.randomUUID() + extension; // 고유 파일 이름 생성
+        return UUID.randomUUID() + extension;
     }
 
-    //검증로직 필요하면 사용 가능
-    private void validateFileFormat(MultipartFile multipartFile) {
-        String contentType = multipartFile.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("지원하지 않는 파일 형식입니다.");
+    /**
+     * S3 키로 파일 삭제
+     */
+    public void removeFile(String key) {
+        if (key != null && !key.isEmpty()) {
+            amazonS3Client.deleteObject(bucket, key);
         }
-    }
-
-    //S3 파일 삭제가 필요한 경우
-    public void removeFile(String fileUrl) {
-        String fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
-        amazonS3Client.deleteObject(bucket, imageFolder + fileName);
     }
 }

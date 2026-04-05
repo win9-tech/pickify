@@ -19,6 +19,7 @@ data:
   USER_INFO_URI: "https://kapi.kakao.com/v2/user/me"
   USER_NAME_ATTRIBUTE: "id"
   S3_ENDPOINT: "http://minio.database.svc.cluster.local:9000"
+  S3_PUBLIC_URL: "${S3_PUBLIC_URL}"
 ---
 apiVersion: apps/v1
 kind: Deployment

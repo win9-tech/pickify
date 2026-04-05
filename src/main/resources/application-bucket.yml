@@ -7,6 +7,7 @@ cloud:
       path:
         image: images/
       endpoint: ${S3_ENDPOINT:}
+      public-url: ${S3_PUBLIC_URL:}
     stack:
       auto: false
     credentials:

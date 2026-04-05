@@ -41,7 +41,8 @@ public class UserServiceImpl implements UserService {
 
     public UserInfoResponse getUser(String email){
         User user = findUserByEmail(email);
-        return UserInfoResponse.from(user);
+        String presignedUrl = s3Service.generatePresignedUrl(user.getProfileImage());
+        return new UserInfoResponse(user.getNickname(), presignedUrl);
     }
 
     @Transactional

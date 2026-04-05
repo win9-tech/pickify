@@ -30,38 +30,37 @@ public class ImageCleanupService {
     @Scheduled(cron = "0 0 2 * * 1") // 매주 월요일 새벽 2시에 실행
     public void cleanupOrphanedImages() {
         try {
-            // 1. S3의 모든 이미지 목록 가져오기
+            // 1. S3의 모든 이미지 키 가져오기
             ListObjectsV2Request listReq = new ListObjectsV2Request()
                     .withBucketName(bucket)
                     .withPrefix(imageFolder);
 
-            List<String> s3ImageUrls = new ArrayList<>();
+            List<String> s3Keys = new ArrayList<>();
             ListObjectsV2Result result;
 
             do {
                 result = amazonS3Client.listObjectsV2(listReq);
                 for (S3ObjectSummary obj : result.getObjectSummaries()) {
-                    s3ImageUrls.add(amazonS3Client.getUrl(bucket, obj.getKey()).toString());
+                    s3Keys.add(obj.getKey());
                 }
                 listReq.setContinuationToken(result.getNextContinuationToken());
             } while (result.isTruncated());
 
-            // 2. DB에 저장된 모든 이미지 URL 가져오기
-            List<String> dbImageUrls = placeImageRepository.findAllImageUrls();
+            // 2. DB에 저장된 모든 이미지 키 가져오기
+            List<String> dbKeys = placeImageRepository.findAllImageUrls();
 
             // 3. S3에는 있지만 DB에는 없는 이미지 찾기
-            List<String> orphanedImages = s3ImageUrls.stream()
-                    .filter(s3Url -> !dbImageUrls.contains(s3Url))
+            List<String> orphanedKeys = s3Keys.stream()
+                    .filter(key -> !dbKeys.contains(key))
                     .toList();
 
             // 4. 고아 이미지 삭제
-            for (String imageUrl : orphanedImages) {
-                String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-                amazonS3Client.deleteObject(bucket, imageFolder + fileName);
-                log.info("Deleted orphaned image: {}", imageUrl);
+            for (String key : orphanedKeys) {
+                amazonS3Client.deleteObject(bucket, key);
+                log.info("Deleted orphaned image: {}", key);
             }
 
-            log.info("Image cleanup completed. Deleted {} orphaned images", orphanedImages.size());
+            log.info("Image cleanup completed. Deleted {} orphaned images", orphanedKeys.size());
 
         } catch (Exception e) {
             log.error("Error during image cleanup", e);
