@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
 @Tag(name = "인증")
@@ -35,6 +36,6 @@ public interface AuthControllerApi {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "COMMON200", description = "OK, 성공")
     })
-    @PostMapping("/me")
+    @GetMapping("/me")
     ApiResponse<Boolean> isAuthenticated(@CookieValue(value = "accessToken", required = false) String accessToken);
 }
